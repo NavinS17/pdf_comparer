@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Comparison Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 24px 40px;
+    }
+
+    .container { width: 100%; max-width: 780px; }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -1px;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 1rem;
+      margin-bottom: 36px;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #bbb;
+    }
+    .dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .dot-red    { background: #E53935; }
+    .dot-yellow { background: #FFD600; }
+    .dot-green  { background: #43A047; }
+
+    /* Upload cards */
+    .upload-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    @media(max-width:560px){ .upload-row{ grid-template-columns:1fr; } }
+
+    .upload-card {
+      background: #1a1a1a;
+      border: 2px dashed #333;
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .upload-card:hover { border-color: #E53935; background: #1e1414; }
+    .upload-card.has-file {
+      border-style: solid;
+      border-color: #43A047;
+      background: #111a11;
+    }
+
+    .upload-card input[type=file] {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+    }
+
+    .upload-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .upload-label {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #ddd;
+      margin-bottom: 6px;
+    }
+    .upload-hint { font-size: 0.78rem; color: #666; }
+    .file-name {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: #43A047;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    /* Compare button */
+    .btn-compare {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: #E53935;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 0.4px;
+      transition: background .2s, transform .1s;
+      margin-bottom: 28px;
+    }
+    .btn-compare:hover:not(:disabled) {
+      background: #b71c1c;
+      transform: translateY(-1px);
+    }
+    .btn-compare:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* Progress / status */
+    .progress-wrap {
+      display: none;
+      margin-bottom: 20px;
+    }
+    .progress-bar-outer {
+      background: #222;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .progress-bar-inner {
+      background: #E53935;
+      height: 100%;
+      width: 0%;
+      animation: indeterminate 1.4s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); width: 60%; }
+      100% { transform: translateX(200%);  width: 60%; }
+    }
+    .progress-text {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #aaa;
+      text-align: center;
+    }
+    .progress-steps {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .step {
+      font-size: 0.78rem;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .step.active { color: #E53935; font-weight: 700; }
+    .step.done   { color: #43A047; }
+
+    /* Flash messages */
+    .flash {
+      background: #3a1010;
+      border: 1px solid #E53935;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      color: #FF8A80;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>PDF Comparison Tool</h1>
+  <p class="subtitle">Upload two PDF files to compare text differences and generate a highlighted output with underlined changes.</p>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><span class="dot dot-red"></span> Deleted (in PDF 1, removed in PDF 2)</div>
+    <div class="legend-item"><span class="dot dot-yellow"></span> Modified (changed between PDFs)</div>
+    <div class="legend-item"><span class="dot dot-green"></span> Inserted (new in PDF 2)</div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash">⚠ {{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="/compare" enctype="multipart/form-data" id="compareForm">
+
+    <div class="upload-row">
+      <!-- PDF 1 -->
+      <div class="upload-card" id="card1">
+        <input type="file" name="pdf1" id="pdf1" accept=".pdf" required
+               onchange="handleFile(this,'card1','name1')" />
+        <div class="upload-icon">📄</div>
+        <div class="upload-label">Upload PDF 1</div>
+        <div class="upload-hint">(Original document)</div>
+        <div class="file-name" id="name1"></div>
+      </div>
+
+      <!-- PDF 2 -->
+      <div class="upload-card" id="card2">
+        <input type="file" name="pdf2" id="pdf2" accept=".pdf" required
+               onchange="handleFile(this,'card2','name2')" />
+        <div class="upload-icon">📄</div>
+        <div class="upload-label">Upload PDF 2</div>
+        <div class="upload-hint">(Modified document)</div>
+        <div class="file-name" id="name2"></div>
+      </div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-outer"><div class="progress-bar-inner"></div></div>
+      <div class="progress-text" id="progressText">Uploading files…</div>
+      <div class="progress-steps">
+        <span class="step active" id="step1">① Uploading</span>
+        <span class="step" id="step2">② Extracting text</span>
+        <span class="step" id="step3">③ Comparing pages</span>
+        <span class="step" id="step4">④ Generating reports</span>
+      </div>
+    </div>
+
+    <button class="btn-compare" type="submit" id="btnCompare" disabled>
+      ⚡ Compare PDFs
+    </button>
+
+  </form>
+</div>
+
+<script>
+  var file1 = false, file2 = false;
+
+  function handleFile(input, cardId, nameId) {
+    var card = document.getElementById(cardId);
+    var label = document.getElementById(nameId);
+    if (input.files && input.files[0]) {
+      var f = input.files[0];
+      var mb = (f.size / 1048576).toFixed(1);
+      label.textContent = f.name + ' · ' + mb + ' MB';
+      card.classList.add('has-file');
+    } else {
+      label.textContent = '';
+      card.classList.remove('has-file');
+    }
+    if (cardId === 'card1') file1 = !!input.files.length;
+    if (cardId === 'card2') file2 = !!input.files.length;
+    document.getElementById('btnCompare').disabled = !(file1 && file2);
+  }
+
+  document.getElementById('compareForm').addEventListener('submit', function() {
+    document.getElementById('btnCompare').disabled = true;
+    document.getElementById('progressWrap').style.display = 'block';
+
+    // Animate through phases to give visual feedback
+    var steps = [
+      { id: 'step1', text: 'Uploading files…',           delay: 0    },
+      { id: 'step2', text: 'Extracting text in parallel…', delay: 3000 },
+      { id: 'step3', text: 'Comparing changed pages…',   delay: 8000 },
+      { id: 'step4', text: 'Generating reports…',         delay: 20000},
+    ];
+    var pText = document.getElementById('progressText');
+    steps.forEach(function(s, i) {
+      setTimeout(function() {
+        steps.slice(0, i).forEach(function(prev) {
+          var el = document.getElementById(prev.id);
+          el.classList.remove('active');
+          el.classList.add('done');
+          el.innerHTML = el.innerHTML.replace('①②③④'.charAt(i > 0 ? i-1 : 0), '✓');
+        });
+        document.getElementById(s.id).classList.add('active');
+        pText.textContent = s.text;
+      }, s.delay);
+    });
+  });
+</script>
+</body>
+</html>

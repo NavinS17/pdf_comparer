@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparison Results — PDF Comparison Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 48px 24px 60px;
+    }
+
+    .container { width: 100%; max-width: 1100px; margin: 0 auto; }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #888;
+      text-decoration: none;
+      font-size: 0.88rem;
+      margin-bottom: 28px;
+      transition: color .15s;
+    }
+    .back-link:hover { color: #fff; }
+
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .file-meta {
+      color: #777;
+      font-size: 0.88rem;
+      margin-bottom: 32px;
+    }
+    .file-meta span { color: #ccc; font-weight: 600; }
+
+    /* Summary metrics */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .metric-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+    .metric-num {
+      font-size: 2.2rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .metric-label { font-size: 0.8rem; color: #777; text-transform: uppercase; letter-spacing: .5px; }
+    .c-total  { color: #fff; }
+    .c-green  { color: #43A047; }
+    .c-yellow { color: #FFD600; }
+    .c-red    { color: #E53935; }
+
+    /* Download buttons */
+    .dl-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 44px;
+    }
+    @media(max-width:600px){ .dl-row{ grid-template-columns:1fr; } }
+
+    .btn-dl {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: filter .15s, transform .1s;
+    }
+    .btn-dl:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn-hl   { background: #1565C0; color: #fff; }
+    .btn-rpdf { background: #2E7D32; color: #fff; }
+    .btn-rtxt { background: #37474F; color: #fff; }
+
+    /* Section titles */
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ddd;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #222;
+      margin: 36px 0;
+    }
+
+    /* Inline diff */
+    .diff-container {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.84rem;
+      line-height: 1.9;
+      max-height: 480px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 36px;
+    }
+    .diff-del { background: rgba(229,57,53,.22);  text-decoration: underline; color: #FF8A80; }
+    .diff-ins { background: rgba(67,160,71,.22);  text-decoration: underline; color: #69F0AE; }
+    .diff-mod { background: rgba(255,214,0,.18);  text-decoration: underline; color: #FFD600; }
+
+    /* Legend strip */
+    .legend-strip {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .li {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #999;
+    }
+    .li-dot {
+      width: 12px; height: 12px;
+      border-radius: 2px;
+    }
+
+    /* Change table */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid #2a2a2a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    thead tr {
+      background: #1c1c1c;
+    }
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 700;
+      color: #ccc;
+      border-bottom: 1px solid #2a2a2a;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #1e1e1e; }
+    tbody tr:hover { background: #181818; }
+    tbody td {
+      padding: 10px 14px;
+      vertical-align: top;
+      color: #ccc;
+    }
+    .ct-inserted { color: #43A047; font-weight: 700; }
+    .ct-deleted  { color: #E53935; font-weight: 700; }
+    .ct-modified { color: #FFD600; font-weight: 700; }
+
+    /* Annotation coverage banner */
+    .annot-note {
+      border-radius: 8px;
+      padding: 11px 16px;
+      font-size: 0.88rem;
+      margin-bottom: 28px;
+    }
+    .annot-full    { background: #0d2b0f; border: 1px solid #2e7d32; color: #81c784; }
+    .annot-partial { background: #1c1a00; border: 1px solid #f57f17; color: #ffcc02; }
+
+    /* Scroll */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <a href="/" class="back-link">← New Comparison</a>
+
+  <h1>Comparison Results</h1>
+  <p class="file-meta">
+    <span>{{ pdf1_name }}</span> &nbsp;→&nbsp; <span>{{ pdf2_name }}</span>
+  </p>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-num c-total">{{ summary.get('total_pages', '?') }}</div>
+      <div class="metric-label">Total Pages</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num" style="color:#555;">{{ summary.get('skipped_pages', 0) }}</div>
+      <div class="metric-label">Identical (skipped)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num c-green">{{ summary.inserted }}</div>
+      <div class="metric-label">Inserted</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num c-yellow">{{ summary.modified }}</div>
+      <div class="metric-label">Modified</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-num c-red">{{ summary.deleted }}</div>
+      <div class="metric-label">Deleted</div>
+    </div>
+  </div>
+
+  <!-- Download buttons -->
+  <div class="dl-row">
+    <a class="btn-dl btn-hl"   href="/download/highlighted">📄 Highlighted PDF</a>
+    <a class="btn-dl btn-rpdf" href="/download/report_pdf" >📊 Report PDF</a>
+    <a class="btn-dl btn-rtxt" href="/download/report_txt" >📝 Report TXT</a>
+  </div>
+
+  {% if annot_total > 0 %}
+  <div class="annot-note {% if annot_done == annot_total %}annot-full{% else %}annot-partial{% endif %}">
+    {% if annot_done == annot_total %}
+      ✅ Highlighted PDF contains <strong>all {{ annot_total }} changed pages</strong> annotated.
+    {% else %}
+      ⚡ Highlighted PDF annotated <strong>{{ annot_done }} of {{ annot_total }} changed pages</strong>
+      within the time budget — the <strong>Report PDF &amp; TXT have 100% of all changes</strong>.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <hr class="divider" />
+
+  <!-- Inline diff -->
+  <div class="section-title">🔍 Inline Diff View</div>
+  <div class="legend-strip">
+    <div class="li"><span class="li-dot" style="background:#E53935"></span>Deleted from PDF 1</div>
+    <div class="li"><span class="li-dot" style="background:#FFD600"></span>Modified in PDF 2</div>
+    <div class="li"><span class="li-dot" style="background:#43A047"></span>Inserted in PDF 2</div>
+  </div>
+  <div class="diff-container">{{ diff_html | safe }}</div>
+
+  <hr class="divider" />
+
+  <!-- Change table -->
+  <div class="section-title">📋 Change Details</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>PDF 1 — {{ pdf1_name }}</th>
+          <th>PDF 2 — {{ pdf2_name }}</th>
+          <th>Change Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if report_rows %}
+          {% for row in report_rows %}
+          <tr>
+            <td>{{ row.page }}</td>
+            <td>{{ row.pdf1_text }}</td>
+            <td>{{ row.pdf2_text }}</td>
+            <td>
+              {% if row.change_type == 'Inserted' %}
+                <span class="ct-inserted">● Inserted</span>
+              {% elif row.change_type == 'Deleted' %}
+                <span class="ct-deleted">● Deleted</span>
+              {% else %}
+                <span class="ct-modified">● Modified</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="4" style="text-align:center;color:#666;padding:28px;">No differences found between the two PDFs.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
